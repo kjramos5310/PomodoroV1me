@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --color-gold-400: #F59E0B;
+  --color-gold-500: #D97706;
+  --color-gold-600: #B45309;
+
+  --color-neutral-850: #1F2937;
+  --color-neutral-900: #111827;
+  --color-neutral-950: #030712;
+
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+
+  --animate-breathe: breathe 2s ease-in-out infinite;
+  --animate-confetti: confetti 0.5s ease-out forwards;
+}
+
+@keyframes breathe {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes confetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--color-neutral-950);
+  color: white;
+  font-family: var(--font-family-sans);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.text-gradient {
+  background: linear-gradient(to right, var(--color-gold-400), var(--color-gold-600));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

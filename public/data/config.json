@@ -1,0 +1,93 @@
+{
+    "moods": [
+        {
+            "id": "bajo",
+            "emoji": "😴",
+            "label": "Bajo"
+        },
+        {
+            "id": "neutro",
+            "emoji": "😐",
+            "label": "Neutro"
+        },
+        {
+            "id": "ready",
+            "emoji": "🔥",
+            "label": "Ready"
+        },
+        {
+            "id": "flow",
+            "emoji": "🌀",
+            "label": "Flow"
+        }
+    ],
+    "moodConfigs": {
+        "bajo": {
+            "suggested": 1,
+            "warmupTime": 120,
+            "focusTime": 900
+        },
+        "neutro": {
+            "suggested": 2,
+            "warmupTime": 120,
+            "focusTime": 1500
+        },
+        "ready": {
+            "suggested": 3,
+            "warmupTime": 120,
+            "focusTime": 1500
+        },
+        "flow": {
+            "suggested": 5,
+            "warmupTime": 120,
+            "focusTime": 2700
+        }
+    },
+    "moodColors": {
+        "bajo": "from-blue-500/20 to-blue-700/20",
+        "neutro": "from-gray-500/20 to-gray-700/20",
+        "ready": "from-orange-500/20 to-red-700/20",
+        "flow": "from-purple-500/20 to-blue-700/20"
+    },
+    "warmupTips": {
+        "bajo": [
+            "Empieza despacio, sin presión 🌱",
+            "Un pequeño paso ya es progreso",
+            "Respira y comienza con lo más fácil"
+        ],
+        "neutro": [
+            "Buen momento para enfocarse 🎯",
+            "Define tu intención para esta sesión",
+            "¿Qué quieres lograr hoy?"
+        ],
+        "ready": [
+            "¡Tienes energía, aprovéchala! ⚡",
+            "Ataca lo más difícil primero",
+            "Este es tu momento, ¡a por ello!"
+        ],
+        "flow": [
+            "Estás en zona, no te detengas 🌀",
+            "Confía en el proceso",
+            "Deja que el trabajo fluya naturalmente"
+        ]
+    },
+    "initialProjects": [
+        {
+            "id": "1",
+            "name": "Estudio",
+            "emoji": "📚",
+            "color": "#3B82F6",
+            "totalDeepworks": 0
+        }
+    ],
+    "deepworkCountOptions": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+    ],
+    "appName": "DeepWork",
+    "appTagline": "Toca para comenzar tu sesión"
+}
