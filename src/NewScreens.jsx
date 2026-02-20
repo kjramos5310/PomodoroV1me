@@ -358,6 +358,51 @@ function MetricsScreen({ history, projects }) {
     const avgH = Math.floor(avgDailyMinutes / 60)
     const avgM = avgDailyMinutes % 60
 
+    // ── Activity Calendar ───────────────────────────────────────────
+    const WEEKS_TO_SHOW = 20;
+    const todayNum = new Date();
+    const historyMap = history.reduce((acc, entry) => {
+        const d = entry.date.split('T')[0];
+        acc[d] = (acc[d] || 0) + entry.deepworksCompleted;
+        return acc;
+    }, {});
+    const maxDWActivity = Math.max(...Object.values(historyMap), 1);
+
+    const activityMatrix = Array(WEEKS_TO_SHOW).fill(null).map(() => Array(7).fill(null));
+    const currentDayOfWk = todayNum.getDay() === 0 ? 6 : todayNum.getDay() - 1;
+    let dateCursor = new Date(todayNum);
+    dateCursor.setHours(23, 59, 59, 999);
+
+    for (let col = WEEKS_TO_SHOW - 1; col >= 0; col--) {
+        for (let row = 6; row >= 0; row--) {
+            if (col === WEEKS_TO_SHOW - 1 && row > currentDayOfWk) {
+                continue;
+            }
+            const dateString = dateCursor.toISOString().split('T')[0];
+            const count = historyMap[dateString] || 0;
+            let level = 0;
+            if (count > 0) {
+                const ratio = count / maxDWActivity;
+                if (ratio <= 0.3) level = 1;
+                else if (ratio <= 0.6) level = 2;
+                else if (ratio <= 0.8) level = 3;
+                else level = 4;
+            }
+            activityMatrix[col][row] = { date: dateString, count, level };
+            dateCursor.setDate(dateCursor.getDate() - 1);
+        }
+    }
+
+    const getActivityColor = (level) => {
+        switch (level) {
+            case 1: return 'bg-blue-500/30';
+            case 2: return 'bg-blue-500/60';
+            case 3: return 'bg-blue-500/90';
+            case 4: return 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]';
+            default: return 'bg-neutral-800';
+        }
+    };
+
     // ── Focus timeline SVG ──────────────────────────────────────────
     const svgW = 300, svgH = 80
     const points = chartData.map((d, i) => {
@@ -442,6 +487,38 @@ function MetricsScreen({ history, projects }) {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+
+                {/* ── ACTIVITY CALENDAR ── */}
+                <div className="bg-neutral-900 rounded-2xl p-5 mb-4 mx-4 overflow-hidden">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">Contribuciones</p>
+                    <div className="flex gap-2">
+                        <div className="flex flex-col justify-between text-[10px] text-gray-500 py-1 pr-1 font-medium">
+                            <span>L</span>
+                            <span></span>
+                            <span>M</span>
+                            <span></span>
+                            <span>V</span>
+                            <span></span>
+                            <span>D</span>
+                        </div>
+                        <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide flex-1">
+                            {activityMatrix.map((col, colIndex) => (
+                                <div key={colIndex} className="flex flex-col gap-1.5">
+                                    {col.map((day, rowIndex) => {
+                                        if (!day) return <div key={rowIndex} className="w-3.5 h-3.5 rounded-[3px]" />;
+                                        return (
+                                            <div
+                                                key={rowIndex}
+                                                className={`w-3.5 h-3.5 rounded-[3px] ${getActivityColor(day.level)} transition-colors duration-200`}
+                                                title={`${day.count} deepworks el ${day.date}`}
+                                            />
+                                        )
+                                    })}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 

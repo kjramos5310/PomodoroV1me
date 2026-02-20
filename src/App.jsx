@@ -19,14 +19,59 @@ function App() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [completedQuestions, setCompletedQuestions] = useState([])
   const [logs, setLogs] = useState([])
-  const [sessionData, setSessionData] = useState({})
+
   const [synthesisData, setSynthesisData] = useState({})
   const [evidenceData, setEvidenceData] = useState({})
 
   // Estado - Proyectos y Navegación (persistido en localStorage)
-  const [projects, setProjects] = useLocalStorage('dw_projects', [])
+  // GAMIFICATION CONFIG
+  const RANKS = [
+    { min: 1, max: 2, name: "ZERO", title: "Punto de origen", symbol: "○", kanji: "初", kanjiName: "HAJIME", color: "text-gray-500", unlocks: "Acceso básico", img: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMWo0amJleGE5c21kYXVtZnNyMWpwOXVsaHc2bW55aTN4MXhjdWZueCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/yMMJB4678mvyq3b4d2/giphy.gif" },
+    { min: 3, max: 4, name: "PULSE", title: "Primer latido", symbol: "◐", kanji: "火", kanjiName: "HINOTE", color: "text-red-400", unlocks: "Glow sutil en logo", img: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMWo0amJleGE5c21kYXVtZnNyMWpwOXVsaHc2bW55aTN4MXhjdWZueCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Dhkrj98EKsE5MGJYMt/giphy.gif" },
+    { min: 5, max: 7, name: "CIPHER", title: "Decodificador de caos", symbol: "◉", kanji: "影", kanjiName: "KAGE", color: "text-green-400", unlocks: "Partículas de matrix", img: "https://i.pinimg.com/originals/07/75/a9/0775a9e32049c670b809855f462a7442.gif" },
+    { min: 8, max: 9, name: "PHANTOM", title: "Sombra entre datos", symbol: "◈", kanji: "幻", kanjiName: "MABOROSHI", color: "text-purple-400", unlocks: "Temas oscuros", img: "https://i.pinimg.com/original/9d/ae/49/9dae49326218d6cad522bf2a00c6d90d.gif" },
+    { min: 10, max: 14, name: "RONIN", title: "Guerrero sin cadenas", symbol: "◆", kanji: "浪", kanjiName: "RONIN", color: "text-orange-400", unlocks: "Avatares animados", img: "https://i.pinimg.com/originals/7e/37/b7/7e37b774fb24d7730e793540d588ce28.gif" },
+    { min: 15, max: 19, name: "SHOGUN", title: "Señor del foco", symbol: "❖", kanji: "将", kanjiName: "SHOGUN", color: "text-red-600", unlocks: "Dashboard katana", img: "https://i.pinimg.com/originals/f3/ba/8a/f3ba8a670352ef29b8285514bf20023e.gif" },
+    { min: 20, max: 29, name: "GENESIS", title: "Origen de disciplina", symbol: "✦", kanji: "創", kanjiName: "SOUZOU", color: "text-blue-400", unlocks: "Sonidos premium", img: "https://i.pinimg.com/originals/66/42/e5/6642e5bc01e695f2d64023727bf7c505.gif" },
+    { min: 30, max: 39, name: "VOID WALKER", title: "Caminante del abismo", symbol: "✧", kanji: "虚", kanjiName: "KYOMU", color: "text-indigo-400", unlocks: "Modo abismo", img: "https://i.pinimg.com/originals/4e/d6/9e/4ed69e7102c7fb7563f82054238e55e8.gif" },
+    { min: 40, max: 49, name: "OMEGA", title: "El inevitable", symbol: "⬡", kanji: "終", kanjiName: "OWARI", color: "text-yellow-400", unlocks: "Efectos dorados", img: "https://i.pinimg.com/originals/b5/4f/98/b54f981240181514781702f306236b28.gif" },
+    { min: 50, max: 74, name: "ETERNAL", title: "Conquistador del tiempo", symbol: "۞", kanji: "永", kanjiName: "EIEN", color: "text-emerald-400", unlocks: "Métricas eternas", img: "https://i.pinimg.com/originals/d6/d2/e5/d6d2e5f3080c3095311c62586ae5ca43.gif" },
+    { min: 75, max: 99, name: "CELESTIAL", title: "Entre los astros", symbol: "✴", kanji: "神", kanjiName: "KAMI", color: "text-cyan-400", unlocks: "Ascensión cósmica", img: "https://i.pinimg.com/originals/5c/7a/7f/5c7a7f47492c6858273679d03837d995.gif" },
+    { min: 100, max: 9999, name: "ABSOLUTE", title: "Más allá del límite", symbol: "∞", kanji: "無", kanjiName: "MU", color: "text-white", unlocks: "Dominio absoluto", img: "https://i.pinimg.com/originals/bd/30/14/bd3014c2b29104033b00650901e16447.gif" }
+  ]
+
+  // Helpers de XP
+  // Quadratic: Level 2 needs 10 XP, Level 3 needs 40 XP (delta 30), Level 4 needs 90 XP (delta 50)
+  const getLevel = (xp) => Math.floor(Math.sqrt(Math.max(0, xp) / 10)) + 1
+  const getRank = (lvl) => RANKS.find(r => lvl >= r.min && lvl <= r.max) || RANKS[RANKS.length - 1]
+  const getNextRank = (lvl) => RANKS.find(r => r.min > lvl) || null
+  const getNextLevelXP = (currLvl) => 10 * Math.pow(currLvl, 2)
+
+  const [history, setHistory] = useLocalStorage('deepwork_history', [])
+  const [projects, setProjects] = useLocalStorage('deepwork_projects', [])
   const [currentProject, setCurrentProject] = useLocalStorage('dw_current_project', null)
-  const [history, setHistory] = useLocalStorage('dw_history', [])
+  const [sessionData, setSessionData] = useLocalStorage('deepwork_session', {
+    startTime: null,
+    duration: 0,
+    isActive: false,
+    isPaused: false
+  })
+
+  // Calcular XP inicial basado en historial si no existe
+  const calculateInitialXP = () => {
+    // 1 XP por sesión (según feedback usuario)
+    // Si no hay deepworksCompleted, asumimos 1 si duración > 5 min
+    const totalSessions = history.reduce((acc, entry) => acc + (entry.deepworksCompleted || (entry.duration > 300 ? 1 : 0)), 0)
+    return totalSessions
+  }
+
+  const [xp, setXP] = useLocalStorage('deepwork_xp', calculateInitialXP()) // Inicializar con historial retroactivo
+
+  const currentLevel = getLevel(xp)
+  const currentRank = getRank(currentLevel)
+  const nextLevelXP = 10 * Math.pow(currentLevel, 2)
+  const prevLevelXP = 10 * Math.pow(currentLevel - 1, 2)
+  const progressToNext = Math.min(100, Math.max(0, ((xp - prevLevelXP) / (nextLevelXP - prevLevelXP)) * 100))
 
   // Inicializar proyectos desde config.json solo si localStorage está vacío
   useEffect(() => {
@@ -34,12 +79,22 @@ function App() {
       setProjects(config.initialProjects)
       setCurrentProject(config.initialProjects[0])
     }
-  }, [config])
+  }, [config, projects, setCurrentProject, setProjects]) // Added dependencies for useEffect
   const [showSidebar, setShowSidebar] = useState(false)
   const [navigationScreen, setNavigationScreen] = useState(null) // 'projects', 'history', 'metrics', null
   const [showProjectSelector, setShowProjectSelector] = useState(false)
 
-  // Sistema de logging
+  const [showLevelUp, setShowLevelUp] = useState(false)
+  const [lastLevel, setLastLevel] = useLocalStorage('deepwork_last_level', 1)
+
+  // Detectar Level Up
+  useEffect(() => {
+    if (currentLevel > lastLevel) {
+      setShowLevelUp(true)
+      // Confetti or sound could be triggered here
+      setLastLevel(currentLevel)
+    }
+  }, [currentLevel, lastLevel, setLastLevel])
   const addLog = (eventType, data) => {
     const logEntry = {
       timestamp: new Date().toISOString(),
@@ -159,6 +214,10 @@ function App() {
 
   // Guardar sesión completada al historial
   const saveToHistory = () => {
+    // Calcular XP: 1 XP por sesión completada + Bonus por proyecto (TODO)
+    const xpGained = 1
+    setXP(prev => prev + xpGained)
+
     const historyEntry = {
       id: Date.now().toString(),
       projectId: currentProject.id,
@@ -170,6 +229,7 @@ function App() {
       deepworksCompleted: currentDeepwork,
       deepworksPlanned: deepworkCount,
       duration: sessionData.duration || 0,
+      xpGained: xpGained, // Guardar XP ganada
       questions: questions,
       synthesis: synthesisData,
       evidence: evidenceData
@@ -267,6 +327,30 @@ function App() {
                 setCurrentProject(projects.find(p => p.id !== projectId))
               }
             }}
+            onUpdateProject={(updatedProject) => {
+              setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p))
+
+              if (currentProject && currentProject.id === updatedProject.id) {
+                setCurrentProject(updatedProject)
+              }
+
+              // 5 XP Bonus handling (Prevent farming)
+              if (updatedProject.status === 'done') {
+                const oldProject = projects.find(p => p.id === updatedProject.id)
+                if (oldProject && oldProject.status !== 'done') {
+                  setXP(prev => prev + 5)
+                  addLog('project_complete', { project: updatedProject.name, xp: 5 })
+                  alert(`✨ ¡Proyecto Completado! Has ganado +5 XP`)
+                }
+              } else {
+                // Si se quita el estado 'done', restar la XP ganada (para evitar farming)
+                const oldProject = projects.find(p => p.id === updatedProject.id)
+                if (oldProject && oldProject.status === 'done') {
+                  setXP(prev => Math.max(0, prev - 5))
+                  alert(`Se ha revertido la XP del proyecto (-5 XP)`)
+                }
+              }
+            }}
           />
         )}
 
@@ -284,6 +368,12 @@ function App() {
             key="metrics"
             history={history}
             projects={projects}
+            currentRank={currentRank}
+            currentLevel={currentLevel}
+            xp={xp}
+            nextLevelXP={nextLevelXP}
+            progressToNext={progressToNext}
+            getNextRank={getNextRank}
           />
         )}
 
@@ -293,6 +383,9 @@ function App() {
             {screen === 'hero' && (
               <HeroScreen
                 key="hero"
+                currentRank={currentRank}
+                currentLevel={currentLevel}
+                progressToNext={progressToNext}
                 onStart={() => {
                   setScreen('mood')
                   addLog('session_start', { timestamp: new Date().toISOString() })
@@ -320,8 +413,10 @@ function App() {
                 suggestedCount={moodConfigs[mood].suggested}
                 moodColors={config?.moodColors}
                 countOptions={config?.deepworkCountOptions}
-                onStart={(count) => {
+                onStart={(count, duration) => {
                   setDeepworkCount(count)
+                  // Sobrescribimos la duración sugerida por el mood
+                  moodConfigs[mood].focusTime = duration * 60
                   setScreen('warmup')
                 }}
               />
@@ -384,6 +479,17 @@ function App() {
               />
             )}
 
+            {screen === 'break' && (
+              <BreakScreen
+                key="break"
+                duration={5 * 60} // 5 minutos de descanso por defecto
+                onComplete={() => {
+                  addLog('break_complete', { duration_seconds: 5 * 60 })
+                  setScreen('warmup')
+                }}
+              />
+            )}
+
             {screen === 'synthesis' && (
               <SynthesisScreen
                 key="synthesis"
@@ -412,50 +518,193 @@ function App() {
             {screen === 'completed' && (
               <CompletedScreen
                 key="completed"
+                history={history}
                 currentDeepwork={currentDeepwork}
                 totalDeepworks={deepworkCount}
                 sessionData={sessionData}
                 logs={logs}
                 onNextDeepwork={() => {
+                  setCompletedQuestions([])
+                  setQuestions([])
+                  setSynthesisData({})
+                  setEvidenceData({})
+                  setLogs([])
+                  setSessionData({ startTime: null, duration: 0, isActive: false, isPaused: false })
                   setCurrentDeepwork(prev => prev + 1)
-                  setScreen('warmup')
+                  setScreen('break')
                 }}
                 onAddExtraDeepwork={() => {
+                  setCompletedQuestions([])
+                  setQuestions([])
+                  setSynthesisData({})
+                  setEvidenceData({})
+                  setLogs([])
+                  setSessionData({ startTime: null, duration: 0, isActive: false, isPaused: false })
                   setDeepworkCount(prev => prev + 1)
                   setCurrentDeepwork(prev => prev + 1)
-                  setScreen('warmup')
+                  setScreen('break')
                 }}
                 onFinishDay={() => {
-                  // Reset para volver al inicio
+                  // Reset all flow state
+                  setCompletedQuestions([])
+                  setQuestions([])
+                  setSynthesisData({})
+                  setEvidenceData({})
+                  setLogs([])
+                  setSessionData({ startTime: null, duration: 0, isActive: false, isPaused: false })
                   setScreen('hero')
+                  setNavigationScreen('metrics') // Ir a métricas es satisfactorio al final del día
                   setCurrentDeepwork(1)
                   setMood(null)
                 }}
                 onExportLogs={exportLogs}
               />
             )}
+            {showLevelUp && (
+              <LevelUpModal
+                level={currentLevel}
+                rank={currentRank}
+                onClose={() => setShowLevelUp(false)}
+              />
+            )}
           </>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   )
 }
 
-// ============= SCREEN COMPONENTS =============
-
-// 1. HERO SCREEN
-function HeroScreen({ onStart }) {
+// 0. LEVEL UP MODAL
+function LevelUpModal({ level, rank, onClose }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+      onClick={onClose}
     >
-      <div className="text-center">
+      <motion.div
+        initial={{ scale: 0.5, y: 50 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.5, y: 50 }}
+        className="bg-neutral-900 border border-gold-500/30 p-8 rounded-3xl max-w-sm w-full text-center relative overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gold-500 to-transparent opacity-50" />
+
+        <motion.div
+          animate={{ rotate: [0, 10, -10, 0] }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="text-6xl mb-4"
+        >
+          🎉
+        </motion.div>
+
+        <h2 className="text-3xl font-bold text-white mb-2">¡NIVEL {level}!</h2>
+        <p className="text-gold-400 font-medium mb-6">Has ascendido a {rank.name}</p>
+
+        {/* Level Up GIF */}
+        <div className="w-48 h-48 mx-auto rounded-full overflow-hidden mb-6 border-4 border-gold-500 shadow-[0_0_30px_rgba(234,179,8,0.3)]">
+          <img
+            src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHlpeGJ2MmEyamJodXh5ZHZhZzlvMWFmbDRpYXM1MjMyZjl1YzhwayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3nyIj1d1igD4SGhVvu/giphy.gif"
+            alt="Level Up"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-3 bg-gold-500 hover:bg-gold-600 text-black font-bold rounded-xl transition-colors"
+        >
+          ¡VAMOS!
+        </button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// 0.5 PARTICLES BACKGROUND
+function ParticlesBackground({ colorClass }) {
+  const [particles, setParticles] = useState([])
+
+  useEffect(() => {
+    // Generate 40 random particles
+    const newParticles = Array.from({ length: 40 }).map((_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 6 + 4, // 4px to 10px
+      delay: Math.random() * 5,
+      duration: Math.random() * 10 + 20
+    }))
+    setParticles(newParticles)
+  }, [])
+
+  // Mapeo manual para evitar que Tailwind purgue las clases generadas dinámicamente
+  const bgMap = {
+    'text-gray-500': 'bg-gray-500 shadow-gray-500',
+    'text-red-400': 'bg-red-400 shadow-red-400',
+    'text-green-400': 'bg-green-400 shadow-green-400',
+    'text-purple-400': 'bg-purple-400 shadow-purple-400',
+    'text-orange-400': 'bg-orange-400 shadow-orange-400',
+    'text-red-600': 'bg-red-600 shadow-red-600',
+    'text-blue-400': 'bg-blue-400 shadow-blue-400',
+    'text-indigo-400': 'bg-indigo-400 shadow-indigo-400',
+    'text-yellow-400': 'bg-yellow-400 shadow-yellow-400',
+    'text-emerald-400': 'bg-emerald-400 shadow-emerald-400',
+    'text-cyan-400': 'bg-cyan-400 shadow-cyan-400',
+    'text-white': 'bg-white shadow-white'
+  }
+
+  const particleClass = bgMap[colorClass] || 'bg-gold-500 shadow-gold-500'
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          className={`absolute rounded-full shadow-[0_0_15px_rgba(255,255,255,0.4)] ${particleClass}`}
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+          }}
+          animate={{
+            y: [-20, -1000],
+            x: [0, (Math.random() - 0.5) * 100],
+            opacity: [0, 0.8, 0],
+            scale: [0.8, 1.5, 0.8]
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: "linear"
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// 1. HERO SCREEN
+function HeroScreen({ onStart, currentRank, currentLevel, progressToNext }) {
+  // console.log('Hero Render:', { currentRank, currentLevel, progressToNext })
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 relative"
+    >
+      <ParticlesBackground colorClass={currentRank.color} />
+
+      <div className="text-center z-10">
         <motion.button
           onClick={onStart}
-          className="relative w-64 h-64 rounded-full overflow-hidden cursor-pointer"
+          className="relative w-64 h-64 rounded-full overflow-hidden cursor-pointer mb-8"
           animate={{ scale: [1, 1.03, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           whileHover={{ scale: 1.08 }}
@@ -468,6 +717,24 @@ function HeroScreen({ onStart }) {
           />
           <div className="absolute inset-0 rounded-full ring-2 ring-gold-500/60 hover:ring-gold-400 transition-all" />
         </motion.button>
+
+        {/* RANK DISPLAY */}
+        <div className="flex flex-col items-center">
+          <div className="relative w-48 h-1 bg-neutral-800 rounded-full overflow-hidden mb-2">
+            <motion.div
+              className="absolute top-0 left-0 h-full bg-gold-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressToNext}%` }}
+            />
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500 tracking-widest uppercase mb-1">Nivel {currentLevel}</p>
+            <h3 className={`text-xl font-bold ${currentRank.color} flex items-center gap-2`}>
+              <span className="text-2xl">{currentRank.symbol}</span>
+              {currentRank.kanji} {currentRank.name}
+            </h3>
+          </div>
+        </div>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -545,8 +812,10 @@ function MoodScreen({ onSelectMood, moods }) {
 // 3. DEEPWORK CONFIG SCREEN
 function DeepworkConfigScreen({ mood, suggestedCount, onStart, moodColors, countOptions }) {
   const [count, setCount] = useState(suggestedCount)
+  const [duration, setDuration] = useState(25) // 25 min default
 
   const options = countOptions ?? [1, 2, 3, 4, 5, 6]
+  const durationOptions = [15, 25, 45, 60]
 
   // 🎞️ Pon aquí tus links de GIFs para cada número de deepworks
   const gifsByCount = {
@@ -573,7 +842,7 @@ function DeepworkConfigScreen({ mood, suggestedCount, onStart, moodColors, count
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-64 h-64 rounded-3xl overflow-hidden mb-10 bg-neutral-800 shadow-2xl"
+        className="w-64 h-64 rounded-3xl overflow-hidden mb-8 bg-neutral-800 shadow-2xl"
       >
         <img
           src={currentGif}
@@ -583,12 +852,12 @@ function DeepworkConfigScreen({ mood, suggestedCount, onStart, moodColors, count
       </motion.div>
 
       <div className="text-center max-w-md w-full">
-        <h2 className="text-3xl font-semibold mb-4">¿Cuántos deepworks hoy?</h2>
-        <p className="text-gray-400 text-sm mb-8">Sugerido: {suggestedCount} según tu energía</p>
+        <h2 className="text-3xl font-semibold mb-2">Configura tu sesión</h2>
 
-        {/* Slider */}
-        <div className="mb-12">
-          <div className="flex justify-center gap-3 mb-6">
+        {/* Count Slider */}
+        <div className="mb-6">
+          <p className="text-gray-400 text-sm mb-4">Número de deepworks (Sugerido: {suggestedCount})</p>
+          <div className="flex justify-center gap-3">
             {options.map((num) => (
               <button
                 key={num}
@@ -604,10 +873,29 @@ function DeepworkConfigScreen({ mood, suggestedCount, onStart, moodColors, count
           </div>
         </div>
 
+        {/* Duration Slider */}
+        <div className="mb-10 bg-neutral-850/50 p-4 rounded-3xl border border-neutral-800">
+          <p className="text-gray-400 text-sm mb-4">Minutos por deepwork</p>
+          <div className="flex justify-center gap-2">
+            {durationOptions.map((mins) => (
+              <button
+                key={mins}
+                onClick={() => setDuration(mins)}
+                className={`flex-1 py-3 rounded-2xl font-semibold transition-all ${duration === mins
+                  ? 'bg-gold-500 text-black scale-105'
+                  : 'bg-neutral-800 text-gray-400 hover:bg-neutral-700'
+                  }`}
+              >
+                {mins}m
+              </button>
+            ))}
+          </div>
+        </div>
+
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => onStart(count)}
+          onClick={() => onStart(count, duration)}
           className="w-full max-w-xs py-4 px-8 bg-gold-500 hover:bg-gold-600 text-black font-semibold rounded-full text-lg transition-colors"
         >
           CALENTAR
@@ -806,18 +1094,61 @@ function QuestionsScreen({ onStart }) {
   )
 }
 
+// 5.5 MINI CONFETTI FOR REWARDS
+function MiniConfetti() {
+  const pieces = Array.from({ length: 50 })
+  return (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-50">
+      {pieces.map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-2 h-2 rounded-full"
+          style={{ backgroundColor: ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6'][i % 5] }}
+          initial={{ x: 0, y: 0, scale: 0 }}
+          animate={{
+            x: (Math.random() - 0.5) * 400,
+            y: (Math.random() - 0.5) * 400 - 100,
+            scale: [0, 1.5, 0],
+            opacity: [1, 1, 0]
+          }}
+          transition={{ duration: 1 + Math.random(), ease: "easeOut" }}
+        />
+      ))}
+    </div>
+  )
+}
+
 // 6. FOCUS SCREEN
 function FocusScreen({ mood, duration, questions, currentQuestionIndex, completedQuestions, onAddQuestion, onCompleteQuestion, onComplete }) {
   const [timeLeft, setTimeLeft] = useState(duration)
   const [showAddQuestion, setShowAddQuestion] = useState(false)
   const [newQuestion, setNewQuestion] = useState('')
+  const [showInbox, setShowInbox] = useState(false)
+  const [inboxText, setInboxText] = useState('')
+  const [inboxItems, setInboxItems] = useState([])
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [bgAudio, setBgAudio] = useState("")
+  const audioRef = useRef(null)
   const startTime = useRef(Date.now())
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (bgAudio) {
+        audioRef.current.src = bgAudio
+        audioRef.current.volume = 0.4
+        audioRef.current.play().catch(e => console.log('Audio play error:', e))
+      } else {
+        audioRef.current.pause()
+      }
+    }
+  }, [bgAudio])
 
   useEffect(() => {
     if (timeLeft <= 0 || completedQuestions.length === questions.length) {
       onComplete({
         duration: duration - timeLeft,
-        questionsAnswered: completedQuestions.length
+        questionsAnswered: completedQuestions.length,
+        inboxItems: inboxItems // Pasando el inbox para que no se pierda
       })
       return
     }
@@ -833,11 +1164,32 @@ function FocusScreen({ mood, duration, questions, currentQuestionIndex, complete
   const minutes = Math.floor(timeLeft / 60)
   const seconds = timeLeft % 60
 
+  const handleCompleteQuestion = () => {
+    // Sonido de recompensa (pop/ding de cristal)
+    const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3')
+    sound.play().catch(e => console.log(e))
+
+    // Confeti
+    setShowConfetti(true)
+    setTimeout(() => setShowConfetti(false), 2000)
+
+    onCompleteQuestion()
+  }
+
   const handleAddQuestion = () => {
     if (newQuestion.trim()) {
       onAddQuestion(newQuestion)
       setNewQuestion('')
       setShowAddQuestion(false)
+    }
+  }
+
+  const handleAddInbox = (e) => {
+    e.preventDefault();
+    if (inboxText.trim()) {
+      setInboxItems(prev => [...prev, inboxText.trim()]);
+      setInboxText('');
+      setShowInbox(false);
     }
   }
 
@@ -848,14 +1200,32 @@ function FocusScreen({ mood, duration, questions, currentQuestionIndex, complete
       exit={{ opacity: 0 }}
       className="min-h-screen w-full flex flex-col bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950"
     >
+      <audio ref={audioRef} loop playsInline />
+      {showConfetti && <MiniConfetti />}
+
       {/* Header */}
-      <div className="p-6 flex items-center justify-between">
+      <div className="p-6 flex items-center justify-between relative">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gold-500/20 to-gold-700/20 animate-pulse" />
         <div className="text-center">
           <p className="text-white font-medium">Focus Session</p>
           <p className="text-gray-400 text-sm">Pregunta {currentQuestionIndex + 1} de {questions.length}</p>
         </div>
-        <div className="w-16" />
+        <div className="w-16 flex justify-end relative">
+          {/* Selector de ruido blanco */}
+          <div className="absolute -top-2 right-0">
+            <select
+              className="bg-neutral-800 text-xs p-2 rounded-lg text-gray-400 focus:outline-none border border-neutral-700 appearance-none text-center cursor-pointer hover:bg-neutral-700 transition-colors"
+              value={bgAudio}
+              onChange={(e) => setBgAudio(e.target.value)}
+              title="Ruido de fondo"
+            >
+              <option value="">🔇 Silencio</option>
+              <option value="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3">🎧 Lofi</option>
+              <option value="https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg">🌧️ Lluvia</option>
+              <option value="https://actions.google.com/sounds/v1/water/waterfall_medium.ogg">🌊 Marrón</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Timer */}
@@ -884,21 +1254,31 @@ function FocusScreen({ mood, duration, questions, currentQuestionIndex, complete
         </div>
 
         {/* Actions */}
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-4 w-full max-w-sm mt-4">
+          <div className="flex gap-4 w-full">
+            <button
+              onClick={() => setShowAddQuestion(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-full transition-colors"
+            >
+              <Plus size={20} />
+              <span className="text-sm">Pregunta</span>
+            </button>
+            <button
+              onClick={() => setShowInbox(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-full transition-colors text-blue-400"
+            >
+              <Plus size={20} />
+              <span className="text-sm">Distracción</span>
+            </button>
+          </div>
+
           <button
-            onClick={() => setShowAddQuestion(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-full transition-colors"
-          >
-            <Plus size={20} />
-            <span>Nueva pregunta</span>
-          </button>
-          <button
-            onClick={onCompleteQuestion}
+            onClick={handleCompleteQuestion}
             disabled={completedQuestions.includes(currentQuestionIndex)}
-            className="flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-600 text-black rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gold-500 hover:bg-gold-600 text-black font-bold rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Check size={20} />
-            <span>Completé esto</span>
+            <span>COMPLETÉ ESTO</span>
           </button>
         </div>
       </div>
@@ -947,6 +1327,121 @@ function FocusScreen({ mood, duration, questions, currentQuestionIndex, complete
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Inbox Modal (Panic Button) */}
+      <AnimatePresence>
+        {showInbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center p-8 z-50 backdrop-blur-sm"
+            onClick={() => setShowInbox(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-neutral-900 p-8 rounded-3xl max-w-md w-full border border-blue-500/30 shadow-[0_0_40px_rgba(59,130,246,0.15)]"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl">💡</span>
+                <h3 className="text-2xl font-semibold text-blue-400">Inbox de Distracciones</h3>
+              </div>
+              <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+                Descarga aquí cualquier pensamiento, idea o pendiente que te esté distrayendo. Tu cerebro puede soltarlo; está a salvo aquí.
+              </p>
+
+              <form onSubmit={handleAddInbox}>
+                <input
+                  type="text"
+                  value={inboxText}
+                  onChange={(e) => setInboxText(e.target.value)}
+                  placeholder="Ej: Pagar la luz, escribirle a mamá, buscar vuelo..."
+                  className="w-full p-4 bg-neutral-950 border border-neutral-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 mb-6 transition-colors"
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowInbox(false)}
+                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 font-medium rounded-full transition-colors"
+                  >
+                    Descartar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full transition-all hover:shadow-[0_0_20px_rgba(59,130,246,0.4)]"
+                  >
+                    Guardar y Volver
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+// 6.5 BREAK SCREEN
+function BreakScreen({ duration, onComplete }) {
+  const [timeLeft, setTimeLeft] = useState(duration)
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onComplete()
+      return
+    }
+    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000)
+    return () => clearInterval(timer)
+  }, [timeLeft, onComplete])
+
+  const minutes = Math.floor(timeLeft / 60)
+  const seconds = timeLeft % 60
+  const progress = ((duration - timeLeft) / duration) * 100
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-950 via-neutral-900 to-blue-950 px-8"
+    >
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="text-center mb-12"
+      >
+        <span className="text-6xl mb-6 block">☕</span>
+        <h2 className="text-4xl font-bold text-blue-400 mb-2">¡Tiempo de descanso!</h2>
+        <p className="text-gray-400">Levántate, estírate, toma agua. Aléjate de la pantalla.</p>
+      </motion.div>
+
+      <div className="relative mb-12">
+        <svg className="w-64 h-64 transform -rotate-90">
+          <circle cx="128" cy="128" r="110" stroke="#1e3a8a" strokeWidth="6" fill="none" />
+          <motion.circle
+            cx="128" cy="128" r="110" stroke="#3b82f6" strokeWidth="6" fill="none"
+            strokeLinecap="round"
+            style={{ strokeDasharray: 691, strokeDashoffset: 691 - (691 * progress) / 100 }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-6xl font-bold text-blue-400">
+            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={onComplete}
+        className="px-8 py-4 bg-neutral-800 hover:bg-neutral-700 text-gray-300 font-medium rounded-full transition-colors"
+      >
+        Saltar descanso (No recomendado)
+      </button>
     </motion.div>
   )
 }
@@ -1151,8 +1646,27 @@ function EvidenceScreen({ onNext }) {
 }
 
 // 9. COMPLETED SCREEN
-function CompletedScreen({ currentDeepwork, totalDeepworks, sessionData, logs, onNextDeepwork, onAddExtraDeepwork, onFinishDay, onExportLogs }) {
+function CompletedScreen({ history, currentDeepwork, totalDeepworks, sessionData, logs, onNextDeepwork, onAddExtraDeepwork, onFinishDay, onExportLogs }) {
   const isLastDeepwork = currentDeepwork >= totalDeepworks
+
+  // Verificar si batió récord de deepworks completados hoy
+  const todayStr = new Date().toISOString().split('T')[0]
+  const todayDeepworks = history.filter(e => e.date.startsWith(todayStr)).reduce((s, e) => s + (e.deepworksCompleted || 1), 0)
+
+  const otherDaysDeepworks = history.filter(e => !e.date.startsWith(todayStr)).reduce((acc, e) => {
+    const d = e.date.split('T')[0]
+    acc[d] = (acc[d] || 0) + (e.deepworksCompleted || 1)
+    return acc
+  }, {})
+  const maxOtherDay = Math.max(0, ...Object.values(otherDaysDeepworks))
+  const isRecord = todayDeepworks > maxOtherDay && todayDeepworks > 1;
+
+  useEffect(() => {
+    // Sonido súper satisfactorio de bloque completado
+    const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3')
+    sound.volume = 0.6
+    sound.play().catch(e => console.log('Audio error:', e))
+  }, [])
 
   return (
     <motion.div
@@ -1179,6 +1693,17 @@ function CompletedScreen({ currentDeepwork, totalDeepworks, sessionData, logs, o
       >
         ¡Deepwork completado!
       </motion.h2>
+
+      {isRecord && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: 'spring', delay: 0.6 }}
+          className="mb-6 bg-gold-500/10 border border-gold-500/30 text-gold-400 px-6 py-2 rounded-full font-medium inline-flex items-center gap-2"
+        >
+          <span>🏆</span> ¡Rompiste tu récord de hoy! ({todayDeepworks} deepworks)
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0 }}
@@ -1223,6 +1748,16 @@ function CompletedScreen({ currentDeepwork, totalDeepworks, sessionData, logs, o
             <span>Total de eventos:</span>
             <span className="font-semibold text-gold-500">{logs.length}</span>
           </div>
+          {sessionData.inboxItems?.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-neutral-700">
+              <span className="block text-blue-400 mb-2 font-medium">Distracciones capturadas:</span>
+              <ul className="list-disc pl-5 space-y-1">
+                {sessionData.inboxItems.map((item, i) => (
+                  <li key={i} className="text-sm text-gray-400">{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -2198,8 +2733,11 @@ function HistoryScreen({ history, projects, onImport }) {
 }
 
 // METRICS SCREEN
-function MetricsScreen({ history, projects }) {
+function MetricsScreen({ history, projects, currentRank, currentLevel, xp, nextLevelXP, progressToNext, getNextRank }) {
   const [activeTab, setActiveTab] = useState('weekly')
+
+  const nextRank = getNextRank ? getNextRank(currentLevel) : null;
+  const xpNeededForNextRank = nextRank ? (10 * Math.pow(nextRank.min - 1, 2)) - xp : 0;
 
   // ── Streak ──────────────────────────────────────────────────────
   const calcStreak = () => {
@@ -2230,30 +2768,48 @@ function MetricsScreen({ history, projects }) {
     const d = new Date(); d.setDate(d.getDate() - (n - 1 - i))
     return d.toISOString().split('T')[0]
   })
+  const getHours = () => Array.from({ length: 24 }, (_, i) => {
+    const d = new Date(); d.setHours(d.getHours() - (23 - i))
+    return d.toISOString().substring(0, 13)
+  })
+
   const tabConfig = {
-    daily: { days: getDays(1), labelFn: () => 'Hoy' },
-    weekly: { days: getDays(7), labelFn: d => new Date(d + 'T12:00').toLocaleDateString('es-ES', { weekday: 'short' }) },
-    monthly: { days: getDays(30), labelFn: d => new Date(d + 'T12:00').getDate() }
+    daily: {
+      data: getHours(),
+      match: e => e.date.substring(0, 13),
+      labelFn: (d, i) => i === 0 ? 'Hoy' : ''
+    },
+    weekly: {
+      data: getDays(7),
+      match: e => e.date.split('T')[0],
+      labelFn: d => new Date(d + 'T12:00').toLocaleDateString('es-ES', { weekday: 'short' })
+    },
+    monthly: {
+      data: getDays(30),
+      match: e => e.date.split('T')[0],
+      labelFn: (d, i) => i % 5 === 0 ? new Date(d + 'T12:00').getDate() : ''
+    }
   }
+
   const tab = tabConfig[activeTab]
-  const chartData = tab.days.map(date => {
-    const entries = history.filter(e => e.date.startsWith(date))
+  const chartData = tab.data.map((timeKey, i) => {
+    const entries = history.filter(e => tab.match(e) === timeKey)
     return {
-      label: tab.labelFn(date),
-      deepworks: entries.reduce((s, e) => s + e.deepworksCompleted, 0)
+      label: tab.labelFn(timeKey, i),
+      value: entries.reduce((s, e) => s + (e.duration || 0) / 60, 0)
     }
   })
-  const maxDW = Math.max(...chartData.map(d => d.deepworks), 1)
+  const maxValue = Math.max(...chartData.map(d => d.value), 1)
 
   // ── Key metrics ──────────────────────────────────────────────────
   const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
   const byDay = Array(7).fill(0)
-  history.forEach(e => { byDay[new Date(e.date).getDay()] += e.deepworksCompleted })
+  history.forEach(e => { byDay[new Date(e.date).getDay()] += 1 })
   const mostProductiveDay = history.length ? dayNames[byDay.indexOf(Math.max(...byDay))] : '—'
   const filledDays = byDay.filter(v => v > 0)
   const leastProductiveDay = history.length && filledDays.length ? dayNames[byDay.indexOf(Math.min(...filledDays))] : '—'
   const byHour = Array(24).fill(0)
-  history.forEach(e => { byHour[new Date(e.date).getHours()] += e.deepworksCompleted })
+  history.forEach(e => { byHour[new Date(e.date).getHours()] += 1 })
   const peakHour = byHour.indexOf(Math.max(...byHour))
   const mostActiveTime = history.length ? (peakHour < 12 ? 'Mañana' : peakHour < 18 ? 'Tarde' : 'Noche') : '—'
   const totalMin = history.reduce((s, e) => s + e.duration, 0) / 60
@@ -2261,27 +2817,127 @@ function MetricsScreen({ history, projects }) {
   const avgMin = uniqueDays > 0 ? Math.round(totalMin / uniqueDays) : 0
   const avgFocus = history.length ? `${Math.floor(avgMin / 60)}h ${avgMin % 60}m` : '—'
 
-  // ── SVG timeline ─────────────────────────────────────────────────
-  const svgW = 300, svgH = 80
-  const pts = chartData.map((d, i) => {
-    const x = chartData.length > 1 ? (i / (chartData.length - 1)) * svgW : svgW / 2
-    const y = svgH - (d.deepworks / maxDW) * (svgH - 10) - 5
-    return `${x},${y}`
-  }).join(' ')
-  const area = `0,${svgH} ${pts} ${svgW},${svgH}`
-  const xLabels = chartData.length <= 7
-    ? chartData
-    : chartData.filter((_, i) => i % Math.ceil(chartData.length / 5) === 0 || i === chartData.length - 1)
+  // ── Activity Calendar ───────────────────────────────────────────
+  const WEEKS_TO_SHOW = 20;
+  const todayNum = new Date();
+  const historyMap = history.reduce((acc, entry) => {
+    const d = entry.date.split('T')[0];
+    acc[d] = (acc[d] || 0) + 1;
+    return acc;
+  }, {});
+  const maxDWActivity = Math.max(...Object.values(historyMap), 1);
+
+  const activityMatrix = Array(WEEKS_TO_SHOW).fill(null).map(() => Array(7).fill(null));
+  const currentDayOfWk = todayNum.getDay() === 0 ? 6 : todayNum.getDay() - 1;
+  let dateCursor = new Date(todayNum);
+  dateCursor.setHours(23, 59, 59, 999);
+
+  for (let col = WEEKS_TO_SHOW - 1; col >= 0; col--) {
+    for (let row = 6; row >= 0; row--) {
+      if (col === WEEKS_TO_SHOW - 1 && row > currentDayOfWk) {
+        continue;
+      }
+      const dateString = dateCursor.toISOString().split('T')[0];
+      const count = historyMap[dateString] || 0;
+      let level = 0;
+      if (count > 0) {
+        const ratio = count / maxDWActivity;
+        if (ratio <= 0.3) level = 1;
+        else if (ratio <= 0.6) level = 2;
+        else if (ratio <= 0.8) level = 3;
+        else level = 4;
+      }
+      activityMatrix[col][row] = { date: dateString, count, level };
+      dateCursor.setDate(dateCursor.getDate() - 1);
+    }
+  }
+
+  const getActivityColor = (level) => {
+    switch (level) {
+      case 1: return 'bg-blue-500/30';
+      case 2: return 'bg-blue-500/60';
+      case 3: return 'bg-blue-500/90';
+      case 4: return 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]';
+      default: return 'bg-neutral-800';
+    }
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen w-full pt-20 px-4 pb-8"
+      className="min-h-screen w-full pt-20 pb-8"
     >
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold mb-6 px-4">Métricas</h1>
+      <div className="max-w-4xl mx-auto">
+        {/* PROFILE CARD - Centered & Large Avatar */}
+        <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 rounded-2xl p-8 mb-4 mx-4 relative overflow-hidden text-center">
+          <div className="absolute top-0 right-0 p-4 opacity-5 font-black text-9xl select-none pointer-events-none">
+            {currentRank.kanji}
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center">
+            {/* Rank Info (Top) */}
+            <div className="mb-6">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <span className={`text-4xl ${currentRank.color}`}>{currentRank.symbol}</span>
+                <h2 className={`text-3xl font-bold ${currentRank.color}`}>{currentRank.name}</h2>
+              </div>
+              <p className="text-base text-gray-400 mb-2">{currentRank.title}</p>
+
+              <div className="flex justify-center items-center gap-4 text-xs font-mono text-gray-500 mb-2">
+                <span className="px-2 py-1 bg-neutral-800 rounded">Lvl {currentLevel}</span>
+                <span>•</span>
+                <span>{Math.floor(xp)} / {nextLevelXP} XP</span>
+              </div>
+            </div>
+
+            {/* Avatar GIF (Large & Centered) */}
+            <div className="w-64 h-64 rounded-full ring-4 ring-neutral-800 overflow-hidden shadow-2xl mb-6 bg-neutral-900">
+              <img src={currentRank.img} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full max-w-md bg-neutral-800 rounded-full h-2 overflow-hidden mb-1">
+              <motion.div
+                className="h-full bg-gradient-to-r from-gold-600 to-gold-400"
+                initial={{ width: 0 }}
+                animate={{ width: `${progressToNext}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mb-6">
+              {Math.round(nextLevelXP - xp)} XP para el nivel {currentLevel + 1}
+            </p>
+
+            {/* Next Rank Info */}
+            {nextRank && (
+              <div className="w-full max-w-sm bg-neutral-950/50 border border-neutral-800 rounded-xl p-4 text-left backdrop-blur-sm">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 border-b border-neutral-800 pb-2">
+                  Siguiente Rango
+                </p>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className={`text-2xl ${nextRank.color}`}>{nextRank.symbol}</span>
+                  <div>
+                    <h4 className={`text-base font-bold ${nextRank.color} leading-none`}>{nextRank.name}</h4>
+                    <p className="text-xs text-gray-400">"{nextRank.title}"</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5 mt-3 text-xs">
+                  <p className="text-gray-300">
+                    <span className="text-gold-500 font-medium mr-1 flex items-center gap-1 inline-flex">
+                      <Sparkles size={12} /> Desbloquea:
+                    </span>
+                    {nextRank.unlocks}
+                  </p>
+                  <p className="text-gray-400">
+                    <span className="text-gray-500 mr-1">Faltan:</span>
+                    <span className="font-mono bg-neutral-900 px-1.5 py-0.5 rounded text-white">{Math.ceil(xpNeededForNextRank)} XP</span>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* STREAK */}
         <div className="bg-neutral-900 rounded-2xl p-5 mb-4 mx-4">
@@ -2336,6 +2992,40 @@ function MetricsScreen({ history, projects }) {
           </div>
         </div>
 
+        {/* ACTIVITY CALENDAR */}
+        <div className="bg-neutral-900 rounded-2xl p-5 mb-4 mx-4 overflow-hidden">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">Contribuciones</p>
+          <div className="flex justify-center w-full">
+            <div className="flex gap-2 max-w-full">
+              <div className="flex flex-col justify-between text-[10px] text-gray-500 py-1 pr-1 font-medium z-10 sticky left-0 bg-neutral-900">
+                <span>L</span>
+                <span></span>
+                <span>M</span>
+                <span></span>
+                <span>V</span>
+                <span></span>
+                <span>D</span>
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
+                {activityMatrix.map((col, colIndex) => (
+                  <div key={colIndex} className="flex flex-col gap-1.5">
+                    {col.map((day, rowIndex) => {
+                      if (!day) return <div key={rowIndex} className="w-3.5 h-3.5 rounded-[3px]" />;
+                      return (
+                        <div
+                          key={rowIndex}
+                          className={`w-3.5 h-3.5 rounded-[3px] ${getActivityColor(day.level)} transition-colors duration-200`}
+                          title={`${day.count} deepworks el ${day.date}`}
+                        />
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* FOCUS TIMELINE */}
         <div className="bg-neutral-900 rounded-2xl p-5 mb-4 mx-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">Focus Timeline</p>
@@ -2343,30 +3033,62 @@ function MetricsScreen({ history, projects }) {
             <p className="text-gray-500 text-sm text-center py-8">Completa tu primer deepwork para ver datos</p>
           ) : (
             <>
-              <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" preserveAspectRatio="none" style={{ height: 100 }}>
-                <defs>
-                  <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.55" />
-                    <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.03" />
-                  </linearGradient>
-                </defs>
-                {[0.25, 0.5, 0.75].map(f => (
-                  <line key={f} x1="0" y1={svgH * f} x2={svgW} y2={svgH * f} stroke="#374151" strokeWidth="0.5" strokeDasharray="4 4" />
-                ))}
-                <polygon points={area} fill="url(#areaGrad2)" />
-                <polyline points={pts} fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                {chartData.map((d, i) => {
-                  if (!d.deepworks) return null
-                  const x = chartData.length > 1 ? (i / (chartData.length - 1)) * svgW : svgW / 2
-                  const y = svgH - (d.deepworks / maxDW) * (svgH - 10) - 5
-                  return <circle key={i} cx={x} cy={y} r="3" fill="#F59E0B" />
-                })}
-              </svg>
-              <div className="flex justify-between mt-2">
-                {xLabels.map((d, i) => (
-                  <span key={i} className="text-xs text-gray-500 capitalize">{d.label}</span>
-                ))}
-              </div>
+              {(() => {
+                const svgW = 300, svgH = 80;
+                // Generate points starting slightly off the bottom for a cleaner look
+                const ptsRaw = chartData.map((d, i) => {
+                  const x = chartData.length > 1 ? (i / (chartData.length - 1)) * svgW : svgW / 2;
+                  const y = svgH - (d.value / maxValue) * (svgH - 10) - 2;
+                  return { x, y };
+                });
+                const ptsString = ptsRaw.map(p => `${p.x},${p.y}`).join(' ');
+
+                // Close the polygon for the gradient area
+                const firstX = ptsRaw[0]?.x || 0;
+                const lastX = ptsRaw[ptsRaw.length - 1]?.x || svgW;
+                const fillArea = `${firstX},${svgH} ${ptsString} ${lastX},${svgH}`;
+
+                return (
+                  <div className="relative">
+                    <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" preserveAspectRatio="none" style={{ height: 100 }}>
+                      <defs>
+                        <linearGradient id="focusGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      {/* Horizontal Grid Lines */}
+                      {[0.25, 0.5, 0.75].map(f => (
+                        <line key={f} x1="0" y1={svgH * f} x2={svgW} y2={svgH * f} stroke="#374151" strokeWidth="0.5" strokeDasharray="4 4" />
+                      ))}
+                      {/* Filled Area */}
+                      <polygon points={fillArea} fill="url(#focusGradient)" />
+                      {/* Line */}
+                      <polyline points={ptsString} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+
+                    {/* Labels aligned with their specific X positions */}
+                    <div className="relative w-full h-6 mt-2">
+                      {ptsRaw.map((p, i) => {
+                        const label = chartData[i].label;
+                        if (!label) return null;
+
+                        // Calculate percentage position for absolute positioning
+                        const pct = (p.x / svgW) * 100;
+                        return (
+                          <span
+                            key={i}
+                            className="absolute text-[10px] text-gray-500 capitalize transform -translate-x-1/2 whitespace-nowrap"
+                            style={{ left: `${pct}%` }}
+                          >
+                            {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
@@ -2418,7 +3140,6 @@ function StatsCard({ icon, value, label, color }) {
     </motion.div>
   )
 }
-
 
 
 export default App
