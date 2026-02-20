@@ -244,6 +244,36 @@ function App() {
     ))
   }
 
+  // Eliminar entrada del historial
+  const handleDeleteHistoryEntry = (entryId) => {
+    if (!window.confirm("¿Estás seguro de que quieres eliminar esta sesión? Se restará el progreso del proyecto y de la experiencia (XP).")) {
+      return
+    }
+
+    setHistory(prevHistory => {
+      const entryToDelete = prevHistory.find(e => e.id === entryId);
+      if (!entryToDelete) return prevHistory;
+
+      // Restar Deepworks del Proyecto
+      setProjects(prevProjects => prevProjects.map(p => {
+        if (p.id === entryToDelete.projectId) {
+          return {
+            ...p,
+            totalDeepworks: Math.max(0, p.totalDeepworks - (entryToDelete.deepworksCompleted || 1))
+          }
+        }
+        return p;
+      }));
+
+      // Restar XP global
+      const xpToSubtract = entryToDelete.xpGained || entryToDelete.deepworksCompleted || 1;
+      setXP(prevXp => Math.max(0, prevXp - xpToSubtract));
+
+      // Retornar nuevo historial filtrando el eliminado
+      return prevHistory.filter(e => e.id !== entryId);
+    });
+  }
+
   // Configuraciones desde config.json (con fallback por si no cargó)
   const moodConfigs = config?.moodConfigs ?? {
     bajo: { suggested: 1, warmupTime: 120, focusTime: 900 },
@@ -360,6 +390,7 @@ function App() {
             history={history}
             projects={projects}
             onImport={handleImport}
+            onDeleteEntry={handleDeleteHistoryEntry}
           />
         )}
 
@@ -2571,7 +2602,7 @@ function ProjectsScreen({ projects, currentProject, onSelectProject, onAddProjec
 
 
 // HISTORY SCREEN
-function HistoryScreen({ history, projects, onImport }) {
+function HistoryScreen({ history, projects, onImport, onDeleteEntry }) {
   const fileInputRef = useRef(null)
 
   const groupedHistory = history.reduce((acc, entry) => {
@@ -2683,17 +2714,27 @@ function HistoryScreen({ history, projects, onImport }) {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end">
                           <p className="text-2xl font-bold text-gold-500">
                             {entry.deepworksCompleted}/{entry.deepworksPlanned}
                           </p>
                           <p className="text-xs text-gray-400 mb-2">deepworks</p>
-                          <button
-                            onClick={() => downloadEntry(entry)}
-                            className="text-xs text-neutral-500 hover:text-gold-500 underline"
-                          >
-                            💾 Descargar JSON
-                          </button>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => downloadEntry(entry)}
+                              className="text-xs text-neutral-500 hover:text-gold-500 transition-colors"
+                              title="Descargar como JSON"
+                            >
+                              💾 JSON
+                            </button>
+                            <button
+                              onClick={() => onDeleteEntry(entry.id)}
+                              className="text-xs text-red-500/70 hover:text-red-500 transition-colors"
+                              title="Eliminar sesión"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
                         </div>
                       </div>
 
